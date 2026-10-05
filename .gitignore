@@ -1,0 +1,34 @@
+# Локальное окружение
+.venv/
+venv/
+env/
+
+# Секреты
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Кэши
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Редакторы и ОС
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Данные, модели и артефакты экспериментов (не добавляются в Git в ЛР1)
+data/*
+!data/.gitkeep
+models/
+mlruns/
+*.joblib
+*.pkl

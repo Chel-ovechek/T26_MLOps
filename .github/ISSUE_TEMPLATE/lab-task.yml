@@ -1,0 +1,33 @@
+name: Задача ЛР
+description: Задача участника с наблюдаемым результатом и критериями приёмки
+title: "[ЛР1] "
+labels: ["lab"]
+body:
+  - type: input
+    id: owner
+    attributes:
+      label: Исполнитель
+      description: GitHub-логин участника
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Наблюдаемый результат
+      description: Что появится в репозитории, когда задача выполнена
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Критерии приёмки
+      description: Как reviewer проверит результат
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Риски и зависимости
+    validations:
+      required: false
