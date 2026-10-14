@@ -3,11 +3,11 @@
 ## Участники и задачи
 
 | Участник | Роль | Issue | PR | Срок | Статус |
-
-| Станислав Соловцов | Repository administrator, Environment engineer | #1 | [#2](ссылка) | 08.10.2026 | ✅ Готово |
-| Владимир Псюрников | Quality Engineer | #? | [PR](ссылка) | 10.10.2026 | ⏳ В работе |
-| Екатерина Головатенко | Release lead | #5 | [PR](ссылка) | 10.10.2026 |  В работе |
-| Никита Скворцов | Documentation and risk reviewer | #? | [PR](ссылка) | 10.10.2026 | ⏳ В работе |
+|----------|------|-------|-----|------|--------|
+| Станислав Соловцов | Repository administrator, Environment engineer | [#1](https://github.com/GundosCore/T26_MLOps/issues/1) | [#2](https://github.com/GundosCore/T26_MLOps/pull/2) | 08.10.2026 | ✅ Готово (merged) |
+| Владимир Псюрников | Quality Engineer | [#3](https://github.com/GundosCore/T26_MLOps/issues/3) | [#4](https://github.com/GundosCore/T26_MLOps/pull/4) | 12.10.2026 | ✅ Готов к мержу |
+| Екатерина Головатенко | Release lead | [#5](https://github.com/GundosCore/T26_MLOps/issues/5) | [#6](https://github.com/GundosCore/T26_MLOps/pull/6) | 09.10.2026 | ✅ Готов к мержу |
+| Никита Скворцов | Documentation and risk reviewer | [#7](https://github.com/GundosCore/T26_MLOps/issues/7) | [#8](https://github.com/GundosCore/T26_MLOps/pull/8) | 10.10.2026 | ✅ Готов к мержу |
 
 ## Чек-лист выпуска
 
