@@ -38,7 +38,7 @@ python -m ruff check .
 python -m pytest -q
 ```
 
-Ожидаемый результат: `All checks passed!` и `2 passed`.
+Ожидаемый результат: `All checks passed!` и `5 passed`.
 
 ## Запуск
 
