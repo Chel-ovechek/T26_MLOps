@@ -3,7 +3,7 @@
 | Поле | Значение |
 |---|---|
 | **Студент** | Екатерина Головатенко, группа [ТМО41], команда [1], GitHub login: `ekaterinagolowatenko` |
-| **Контрольная версия** | Тег `lr1-v1`: https://github.com/GundosCore/T26_MLOps/releases/tag/lr1-v1 |
+| **Контрольная версия** | Тег `lr1-v1`: https://github.com/GundosCore/T26_MLOps/releases/tag/lr1-v1, коммит [fc27570831eb5c4396b314a3e9aa4d41e306aa82] |
 | **Роль** | Release lead. Зона ответственности: формирование плана ЛР1, контроль связей issue–PR, создание финального тега релиза. |
 | **Задача** | [Issue #5](https://github.com/GundosCore/T26_MLOps/issues/5) |
 | **Личный артефакт** | 1. [PR #6](https://github.com/GundosCore/T26_MLOps/pull/6) <br> 2. [Review PR #2](https://github.com/GundosCore/T26_MLOps/pull/2) |
