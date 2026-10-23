@@ -25,9 +25,13 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Данные, модели и артефакты экспериментов (не добавляются в Git в ЛР1)
+# Данные и артефакты экспериментов
 data/*
 !data/.gitkeep
+!data/contract.json
+!data/flights_sample.csv
+data/raw/
+data/processed/
 models/
 mlruns/
 *.joblib
