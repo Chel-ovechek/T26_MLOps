@@ -36,3 +36,4 @@ models/
 mlruns/
 *.joblib
 *.pkl
+reports/
