@@ -1,0 +1,40 @@
+{
+  "contract_version": "1.0.0",
+  "dataset": "flight-delay-training-sample",
+  "minimum_rows": 20,
+  "allow_extra_columns": false,
+  "duplicate_rows": "forbid",
+  "columns": {
+    "FlightDate": {
+      "role": "event_time",
+      "type": "date",
+      "format": "%Y-%m-%d",
+      "nullable": false,
+      "sorted": "ascending",
+      "rationale": "Flight date. Key for the chronological train/validation/test split, so rows must be in ascending order."
+    },
+    "DepHour": {
+      "role": "feature",
+      "type": "integer",
+      "nullable": false,
+      "minimum": 0,
+      "maximum": 23,
+      "rationale": "Local departure hour. A day has hours 0..23."
+    },
+    "IsWeekend": {
+      "role": "feature",
+      "type": "integer",
+      "nullable": false,
+      "allowed_values": [0, 1],
+      "rationale": "Weekend flag. Binary: 0 or 1."
+    },
+    "ArrDelay": {
+      "role": "target_source",
+      "type": "integer",
+      "nullable": false,
+      "minimum": -180,
+      "maximum": 1440,
+      "rationale": "Arrival delay in minutes, known only after landing. Source of the target (ArrDelay >= 15). Must never be used as a feature (leakage). Range follows the lab spec: -180 min early .. 1440 min (24 h) late."
+    }
+  }
+}
