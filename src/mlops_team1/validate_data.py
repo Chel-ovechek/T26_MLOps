@@ -7,7 +7,7 @@ import csv
 import hashlib
 import json
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 MAX_EXAMPLES = 5
@@ -63,7 +63,11 @@ def parse_value(raw: str, spec: dict):
     if kind == "integer":
         return int(raw.strip())
     if kind == "date":
-        return datetime.strptime(raw.strip(), spec["format"]).date()  # noqa: DTZ007
+        return (
+            datetime.strptime(raw.strip(), spec["format"])
+            .replace(tzinfo=UTC)
+            .date()
+        )
     raise ContractError(f"unsupported type: {kind!r}")
 
 
