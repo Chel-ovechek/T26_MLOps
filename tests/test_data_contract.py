@@ -131,6 +131,16 @@ BAD_CASES = [
     ),
     pytest.param(add_extra_column, "extra_columns", id="extra_column"),
     pytest.param(lambda ls: ls[:11], "minimum_rows", id="too_few_rows"),
+    pytest.param(
+        lambda ls: [ls[0], ls[1] + ",99", *ls[2:]],
+        "row_length",
+        id="extra_cell_in_row",
+    ),
+    pytest.param(
+        lambda ls: set_cell(ls, 1, DATE, "2026-1-5"),
+        "types",
+        id="date_without_leading_zero",
+    ),
 ]
 
 
@@ -139,6 +149,12 @@ def test_violation_is_detected(tmp_path: Path, mutate, expected: str) -> None:
     code, report = run(tmp_path, mutate(sample_lines()))
     assert code == 1
     assert failed_checks(report) == {expected}
+def test_short_row_is_detected(tmp_path: Path) -> None:
+    lines = sample_lines()
+    lines[1] = ",".join(lines[1].split(",")[:-1])
+    code, report = run(tmp_path, lines)
+    assert code == 1
+    assert "row_length" in failed_checks(report)
 
 
 # --- Ошибки чтения: код 2, а не «успех» ------------------------------------

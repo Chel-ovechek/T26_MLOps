@@ -63,11 +63,15 @@ def parse_value(raw: str, spec: dict):
     if kind == "integer":
         return int(raw.strip())
     if kind == "date":
-        return (
-            datetime.strptime(raw.strip(), spec["format"])
+        text = raw.strip()
+        parsed = (
+            datetime.strptime(text, spec["format"])
             .replace(tzinfo=UTC)
             .date()
         )
+        if parsed.strftime(spec["format"]) != text:
+            raise ValueError(f"{text!r} does not match {spec['format']}")
+        return parsed
     raise ContractError(f"unsupported type: {kind!r}")
 
 
@@ -114,6 +118,18 @@ def check_minimum_rows(rows: list[dict], contract: dict) -> dict:
     return make_check(
         "minimum_rows", passed, f"rows={len(rows)}, minimum={minimum}"
     )
+
+
+def check_row_length(columns: list[str], rows: list[dict]) -> dict:
+    problems = []
+    for index, row in enumerate(rows):
+        line = index + 2
+        extra = row.get(None)
+        if extra:
+            problems.append(f"line {line}: {len(extra)} extra cell(s)")
+        if any(row.get(name) is None for name in columns):
+            problems.append(f"line {line}: too few cells")
+    return result("row_length", problems)
 
 
 def check_not_null(
@@ -224,6 +240,7 @@ def run_checks(
         check_required_columns(columns, contract),
         check_extra_columns(columns, contract),
         check_minimum_rows(rows, contract),
+        check_row_length(columns, rows),
         check_not_null(columns, rows, contract),
         check_types(columns, rows, contract),
         check_ranges(columns, rows, contract),
