@@ -1,0 +1,89 @@
+{
+  "contract_version": "2.0.0",
+  "dataset": "flight-delay-training-sample",
+  "data_file": "data/flights_sample.csv",
+  "sha256": "d2038bfd4ba28a304e1bed26578c9bfcb556942b51694b8342a75f4f2dbf617e",
+  "rows": 24,
+  "columns": [
+    "FlightDate",
+    "DepHour",
+    "IsWeekend",
+    "ArrDelay"
+  ],
+  "passed": true,
+  "checks": [
+    {
+      "name": "required_columns",
+      "passed": true,
+      "details": "ok"
+    },
+    {
+      "name": "extra_columns",
+      "passed": true,
+      "details": "ok"
+    },
+    {
+      "name": "minimum_rows",
+      "passed": true,
+      "details": "rows=24, minimum=20"
+    },
+    {
+      "name": "row_length",
+      "passed": true,
+      "details": "ok"
+    },
+    {
+      "name": "no_missing_values",
+      "passed": true,
+      "details": "ok"
+    },
+    {
+      "name": "types",
+      "passed": true,
+      "details": "ok"
+    },
+    {
+      "name": "ranges",
+      "passed": true,
+      "details": "ok"
+    },
+    {
+      "name": "allowed_values",
+      "passed": true,
+      "details": "ok"
+    },
+    {
+      "name": "duplicates",
+      "passed": true,
+      "details": "ok"
+    },
+    {
+      "name": "sorted",
+      "passed": true,
+      "details": "ok"
+    }
+  ],
+  "split": {
+    "parts": {
+      "train": {
+        "rows": 14,
+        "start": "2026-01-05",
+        "end": "2026-01-18",
+        "positive_rate": 0.571
+      },
+      "validation": {
+        "rows": 5,
+        "start": "2026-01-19",
+        "end": "2026-01-23",
+        "positive_rate": 0.6
+      },
+      "test": {
+        "rows": 5,
+        "start": "2026-01-24",
+        "end": "2026-01-28",
+        "positive_rate": 0.8
+      }
+    },
+    "time_order_ok": true
+  }
+}
