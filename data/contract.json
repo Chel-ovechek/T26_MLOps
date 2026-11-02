@@ -1,6 +1,14 @@
 {
-  "contract_version": "1.0.0",
+  "contract_version": "2.0.0",
   "dataset": "flight-delay-training-sample",
+  "description": "Обезличенный учебный набор для прогноза задержки прибытия рейса",
+  "owner": "student-team",
+  "source": {
+    "type": "course-provided-synthetic-sample",
+    "uri": "data/flights_sample.csv",
+    "license": "Только для учебного использования в курсе MLOps 2026-2027",
+    "collected_at": null
+  },
   "minimum_rows": 20,
   "allow_extra_columns": false,
   "duplicate_rows": "forbid",
@@ -10,6 +18,7 @@
       "type": "date",
       "format": "%Y-%m-%d",
       "nullable": false,
+      "description": "Дата рейса для хронологического разбиения",
       "sorted": "ascending",
       "rationale": "Flight date. Key for the chronological train/validation/test split, so rows must be in ascending order."
     },
@@ -19,13 +28,18 @@
       "nullable": false,
       "minimum": 0,
       "maximum": 23,
+      "description": "Час отправления по местному времени",
       "rationale": "Local departure hour. A day has hours 0..23."
     },
     "IsWeekend": {
       "role": "feature",
       "type": "integer",
       "nullable": false,
-      "allowed_values": [0, 1],
+      "allowed_values": [
+        0,
+        1
+      ],
+      "description": "Признак выходного дня",
       "rationale": "Weekend flag. Binary: 0 or 1."
     },
     "ArrDelay": {
@@ -34,6 +48,7 @@
       "nullable": false,
       "minimum": -180,
       "maximum": 1440,
+      "description": "Задержка прибытия в минутах; целевой класс строится условием ArrDelay >= 15",
       "rationale": "Arrival delay in minutes, known only after landing. Source of the target (ArrDelay >= 15). Must never be used as a feature (leakage). Range follows the lab spec: -180 min early .. 1440 min (24 h) late."
     }
   }
