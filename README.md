@@ -51,7 +51,7 @@ python -c "import mlops_team1; print(mlops_team1.ping())"
 ## Данные и контракт (ЛР2)
 
 - `data/contract.json` — машинный контракт данных: поля, типы, диапазоны, версия.
-- `data/flights_sample.csv` — учебный образец (24 синтетические строки), нужен для smoke-проверок.
+- `data/flights_sample.csv` — учебный образец (24 синтетические строки) под управлением DVC: в Git лежит `data/flights_sample.csv.dvc`, сам файл достаётся командой `dvc pull`. Копия версии v1 для тестов и CI: `tests/fixtures/flights_sample_v1.csv`.
 - `docs/data-card.md` — карточка набора данных для человека.
 
 ### Проверка данных
@@ -81,6 +81,6 @@ python -m mlops_team1.validate_data --data data/flights_sample.csv --contract da
 - `src/mlops_team1/` — код проекта
 - `tests/` — тесты
 - `.github/workflows/ci.yml` — автоматические проверки (CI)
-- `data/` — контракт и учебный образец; остальное содержимое в Git не добавляется (см. `.gitignore`)
+- `data/` — контракт и `.dvc`-метаданные набора; сами CSV в Git не добавляются, их версионирует DVC (см. `.gitignore`)
 - `reports/` — отчёты проверок (создаются командой, в Git не хранятся)
 - `docs/` — документация

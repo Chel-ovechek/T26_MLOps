@@ -11,7 +11,7 @@ import pytest
 from mlops_team1.validate_data import main
 
 ROOT = Path(__file__).resolve().parents[1]
-SAMPLE = ROOT / "data" / "flights_sample.csv"
+SAMPLE = ROOT / "tests" / "fixtures" / "flights_sample_v1.csv"
 CONTRACT = ROOT / "data" / "contract.json"
 
 # Порядок столбцов в образце: FlightDate, DepHour, IsWeekend, ArrDelay
