@@ -51,10 +51,9 @@ python -c "import mlops_team1; print(mlops_team1.ping())"
 ## Данные и контракт (ЛР2)
 
 - `data/contract.json` — машинный контракт данных: поля, типы, диапазоны, версия.
-- `data/flights_sample.csv` — учебный образец (24 синтетические строки) под управлением DVC: в Git лежит `data/flights_sample.csv.dvc`, сам файл достаётся командой `dvc pull`. Копия версии v1 для тестов и CI: `tests/fixtures/flights_sample_v1.csv`.
+- `data/flights_sample.csv` — учебный образец (24 синтетические строки) под управлением DVC: в Git лежит `data/flights_sample.csv.dvc`, сам файл достаётся командой `dvc pull` (см. раздел «Данные и DVC»). Копия версии v1 для тестов и CI: `tests/fixtures/flights_sample_v1.csv`.
 - `docs/data-card.md` — карточка набора данных для человека.
-
-Получение данных: `python -m pip install "dvc>=3,<4"`, затем `dvc pull`. Каталог `dvc-storage` должен лежать рядом с папкой репозитория; иначе задайте путь командой `dvc remote modify --local course-local <путь>`.
+- `docs/leakage-and-split.md` — момент прогноза, разбиение и меры против утечки.
 
 ### Проверка данных
 
@@ -76,16 +75,49 @@ python -m mlops_team1.validate_data --data data/flights_sample.csv --contract da
 
 ### Отчёты
 
-Отчёты в `reports/` создаются командой выше и в Git не хранятся (каталог указан в `.gitignore`). Отчёт воспроизводится одной командой, а в CI сохраняется как артефакт.
+Отчёты в `reports/` создаются командой выше и в Git не хранятся (каталог указан в `.gitignore`). Отчёт воспроизводится одной командой, а в CI сохраняется как артефакт. Отчёты версий данных ЛР3, которые нужны как доказательство, лежат в `docs/reproducibility/validation/`.
+
+## Данные и DVC
+
+Данные не лежат в Git. Git хранит только «квитанцию» `data/flights_sample.csv.dvc` (хэш и размер файла), а сам файл хранится в DVC cache и в remote. По коммиту Git и квитанции DVC можно восстановить ровно ту версию данных, которая была в этом коммите.
+
+### Как получить данные
+
+1. Клонируйте репозиторий и создайте окружение (см. «Установка»).
+2. Установите DVC: `python -m pip install "dvc>=3,<4"`.
+3. Распакуйте архив `dvc-storage` **рядом** с клоном: папка `dvc-storage` должна лежать на одном уровне с папкой репозитория, не внутри неё.
+4. Выполните `dvc pull`. Ожидаемо: `1 file fetched and 1 file added`.
+5. Запустите валидатор:
+   ```bash
+   python -m mlops_team1.validate_data --data data/flights_sample.csv --contract data/contract.json --report reports/validation/restored.json
+   ```
+   Код завершения 0, все проверки `OK`. Этот отчёт временный и в Git не попадает.
+6. Сверьте SHA-256 файла `data/flights_sample.csv` с `d2038bfd4ba28a304e1bed26578c9bfcb556942b51694b8342a75f4f2dbf617e`.
+   - PowerShell: `Get-FileHash data\flights_sample.csv -Algorithm SHA256`
+   - cmd: `certutil -hashfile data\flights_sample.csv SHA256`
+
+Если `dvc-storage` лежит в другом месте, задайте путь локально: `dvc remote modify --local course-local url <путь>`. Это записывается в `.dvc/config.local` и не коммитится.
+
+### Что не коммитить
+
+`.venv`, `.env`, секреты и токены, `.dvc/cache`, `.dvc/config.local`, папку `dvc-storage`, CSV вне `tests/fixtures/`, модели.
+
+### Предупреждение про CRLF
+
+У правильной версии v1 размер 482 байта (окончания строк LF). Если на Windows файл получился с CRLF (507 байт), для DVC это другой файл с другими md5 и SHA-256. Окончания строк закреплены в `.gitattributes`.
 
 ## Отклонения от задания (ЛР3)
 
-- **Имя пакета.** В методичке команды запускаются через `mlops_flight_delay`, в проекте пакет называется `mlops_team1`.
-- **Копия v1 для тестов.** CSV версии v1 лежит в Git как `tests/fixtures/flights_sample_v1.csv`. Тесты и шаг валидатора в CI используют её, потому что CI не имеет доступа к локальному remote.
-- **Отчёт v1.** Лежит в `docs/reproducibility/validation/lr3-v1.json`, а не в `reports/`, потому что `.gitignore` игнорирует каталог `reports/`.
-- **`.gitignore`.** Вместо `data/*` с исключениями игнорируются `data/*.csv` и `data/*.parquet`, иначе Git не видит `.dvc`-файл набора.
-- **Окончания строк.** CSV хранится с LF (`.gitattributes`). При переносе на Windows файл был с CRLF, его исправили до `dvc add`, чтобы хэш не зависел от ОС.
-- **Remote.** В общей конфигурации указан относительный путь `../dvc-storage` без секретов. Если каталог лежит в другом месте, путь задаётся командой `dvc remote modify --local course-local <путь>` (хранится в `.dvc/config.local`, в Git не попадает).
+Здесь перечислено, чем проект осознанно отличается от текста методички, и почему. Список показан открыто, чтобы читатель не принимал отличия за ошибки.
+
+- **Имя пакета.** `mlops_team1` вместо `mlops_flight_delay`. Осознанное отличие с ЛР2.
+- **Контракт 2.0.0.** Курсовой контракт плюс правила команды `sorted` и `rationale`. По указанию преподавателя.
+- **Remote.** Локальная папка `dvc-storage` рядом с клоном, передаётся архивом. В общей конфигурации относительный путь `../../dvc-storage` без секретов. Подтверждено преподавателем.
+- **Версия v2.** Синтетическое продолжение v1, генерируется скриптом с фиксированным seed. Разрешено преподавателем.
+- **`.gitignore`.** Игнорируются `data/*.csv` и `data/*.parquet` вместо `data/*` с исключениями, иначе DVC не видит свой `.dvc`-файл. Решение команды, преподавателю не согласовывалось.
+- **Копия v1 в `tests/fixtures/flights_sample_v1.csv`.** Нужна тестам и CI, потому что CI не имеет доступа к локальному remote. Решение команды.
+- **Отчёты валидации в `docs/reproducibility/validation/`.** Потому что `.gitignore` игнорирует любую папку `reports/`. Решение команды.
+- **Формат веток.** `<тип>/issue-<номер>-<название>` вместо `lab3/dvc-versioning`.
 - **Имя отчёта в CI.** Шаг CI пишет отчёт в `reports/validation/lr2.json`, имя сохранено со времён ЛР2.
 
 ## Структура
@@ -95,4 +127,4 @@ python -m mlops_team1.validate_data --data data/flights_sample.csv --contract da
 - `.github/workflows/ci.yml` — автоматические проверки (CI)
 - `data/` — контракт и `.dvc`-метаданные набора; сами CSV в Git не добавляются, их версионирует DVC (см. `.gitignore`)
 - `reports/` — отчёты проверок (создаются командой, в Git не хранятся)
-- `docs/` — документация
+- `docs/` — документация, в том числе `docs/reproducibility/` с протоколом и отчётами версий данных
