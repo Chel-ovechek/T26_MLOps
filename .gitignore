@@ -32,6 +32,9 @@ data/raw/
 data/processed/
 models/
 mlruns/
+mlartifacts/
+mlflow.db
 *.joblib
 *.pkl
-reports/
+reports/*
+!reports/experiments/
