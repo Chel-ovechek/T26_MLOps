@@ -311,28 +311,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
-    try:
-        contract = load_contract(args.contract)
-        columns, rows = read_table(args.data)
-        digest = sha256_of(args.data)
-        checks = run_checks(columns, rows, contract)
-        passed = all(check["passed"] for check in checks)
-        split = split_summary(rows, contract) if passed else None
-        report_head = {
-            "contract_version": contract["contract_version"],
-            "dataset": contract["dataset"],
-        }
-    except (OSError, ValueError, KeyError, ContractError) as exc:
-        # ValueError: битый JSON или неверная кодировка; KeyError: в контракте
-        # нет обязательного ключа; ContractError: неподдерживаемое правило
-        print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
-        return 2
+def validate_dataset(data_path: Path, contract_path: Path) -> dict:
+    """Проверяет набор по контракту и возвращает отчёт (его же main пишет в --report).
 
-    report = {
-        **report_head,
-        "data_file": args.data.as_posix(),
+    Ошибки чтения файла или контракта пробрасываются исключениями.
+    """
+    contract = load_contract(contract_path)
+    columns, rows = read_table(data_path)
+    digest = sha256_of(data_path)
+    checks = run_checks(columns, rows, contract)
+    passed = all(check["passed"] for check in checks)
+    split = split_summary(rows, contract) if passed else None
+    return {
+        "contract_version": contract["contract_version"],
+        "dataset": contract["dataset"],
+        "data_file": data_path.as_posix(),
         "sha256": digest,
         "rows": len(rows),
         "columns": columns,
@@ -340,16 +333,28 @@ def main(argv: list[str] | None = None) -> int:
         "checks": checks,
         "split": split,
     }
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    try:
+        report = validate_dataset(args.data, args.contract)
+    except (OSError, ValueError, KeyError, ContractError) as exc:
+        # ValueError: битый JSON или неверная кодировка; KeyError: в контракте
+        # нет обязательного ключа; ContractError: неподдерживаемое правило
+        print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 2
+
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
 
-    for check in checks:
+    for check in report["checks"]:
         status = "OK  " if check["passed"] else "FAIL"
         print(f"{status} {check['name']}: {check['details']}")
-    return 0 if passed else 1
+    return 0 if report["passed"] else 1
 
 
 if __name__ == "__main__":
