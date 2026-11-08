@@ -7,6 +7,7 @@ import csv
 import hashlib
 import json
 import sys
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -24,6 +25,23 @@ def sha256_of(path: Path) -> str:
 
 SPLIT_FRACTIONS = (0.6, 0.8)  # границы train/validation и validation/test
 LATE_MINUTES = 15  # опоздание: ArrDelay >= 15
+
+
+def split_cuts(dates: Sequence) -> tuple[int, int]:
+    """Границы частей: число строк в train и в train+validation.
+
+    Даты должны идти по возрастанию. Граница считается по доле строк и сдвигается
+    к концу дня, чтобы один день не попал сразу в две части. Эту функцию используют
+    и валидатор, и обучение, поэтому разбиения у них совпадают.
+    """
+    count = len(dates)
+    cuts = []
+    for fraction in SPLIT_FRACTIONS:
+        cut = int(count * fraction)
+        while 0 < cut < count and dates[cut] == dates[cut - 1]:
+            cut += 1
+        cuts.append(cut)
+    return cuts[0], cuts[1]
 
 
 def split_summary(rows: list[dict], contract: dict) -> dict:
@@ -45,17 +63,11 @@ def split_summary(rows: list[dict], contract: dict) -> dict:
         for r in rows
     )
     dates = [day for day, _ in items]
-    n = len(items)
-    cuts = []
-    for fraction in SPLIT_FRACTIONS:
-        cut = int(n * fraction)
-        while 0 < cut < n and dates[cut] == dates[cut - 1]:
-            cut += 1  # не режем один день на две части
-        cuts.append(cut)
+    train_cut, validation_cut = split_cuts(dates)
     parts = {
-        "train": items[: cuts[0]],
-        "validation": items[cuts[0] : cuts[1]],
-        "test": items[cuts[1] :],
+        "train": items[:train_cut],
+        "validation": items[train_cut:validation_cut],
+        "test": items[validation_cut:],
     }
     info = {}
     for name, part in parts.items():

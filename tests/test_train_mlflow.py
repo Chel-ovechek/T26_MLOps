@@ -78,3 +78,12 @@ def test_run_experiment_refuses_data_that_fails_contract(tracking: str, tmp_path
     broken.write_text("\n".join([*lines, lines[-1]]) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="контракт"):
         run_experiment(broken, CONTRACT, tracking, 10, 3, 42)
+
+
+def test_run_experiment_logs_boundaries_shifted_to_end_of_day(
+    tracking: str, four_flights_per_day_csv: Path
+) -> None:
+    run_id = run_experiment(four_flights_per_day_csv, CONTRACT, tracking, 5, 2, 42)
+    params = mlflow.MlflowClient().get_run(run_id).data.params
+    assert (params["split_train_rows"], params["split_validation_rows"]) == ("16", "4")
+    assert params["split_test_rows"] == "4"
