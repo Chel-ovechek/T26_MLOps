@@ -20,7 +20,7 @@ from mlops_team1.run_meta import (
     read_dvc_md5,
 )
 from mlops_team1.train import FEATURES, train_model
-from mlops_team1.validate_data import validate_dataset
+from mlops_team1.validate_data import split_cuts, validate_dataset
 
 SPLIT_POLICY = "chronological-60-20-20"
 TARGET_THRESHOLD_MINUTES = 15
@@ -45,9 +45,8 @@ def run_experiment(
 
     frame = pd.read_csv(data_path)
     frame["FlightDate"] = pd.to_datetime(frame["FlightDate"], errors="raise")
-    frame = frame.sort_values("FlightDate").reset_index(drop=True)
-    train_end = int(len(frame) * 0.6)
-    validation_end = int(len(frame) * 0.8)
+    frame = frame.sort_values("FlightDate", kind="stable").reset_index(drop=True)
+    train_end, validation_end = split_cuts(frame["FlightDate"].tolist())
     train_frame = frame.iloc[:train_end].copy()
     validation_frame = frame.iloc[train_end:validation_end].copy()
     train_target = (train_frame["ArrDelay"] >= TARGET_THRESHOLD_MINUTES).astype(int)
