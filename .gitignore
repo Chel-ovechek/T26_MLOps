@@ -38,3 +38,4 @@ mlflow.db
 *.pkl
 reports/*
 !reports/experiments/
+!reports/tests/
