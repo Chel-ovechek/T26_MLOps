@@ -54,7 +54,9 @@ def test_bundle_version_is_semver_string(bundle: dict) -> None:
     )
 
 
-def test_bundle_parameters_and_seed_are_saved(tmp_path: Path, valid_frame: pd.DataFrame, csv_factory) -> None:
+def test_bundle_parameters_and_seed_are_saved(
+    tmp_path: Path, valid_frame: pd.DataFrame, csv_factory
+) -> None:
     data_path = csv_factory(valid_frame)
     model_path = tmp_path / "custom.joblib"
     train_model(data_path, model_path, n_estimators=7, max_depth=3, random_state=11)
@@ -152,3 +154,23 @@ def test_cli_reports_same_version_as_bundle(
     assert f"bundle_version={bundle['version']}" in lines, (
         f"Вывод main: {lines}, версия в bundle: {bundle['version']}"
     )
+
+
+def test_seed_is_reflected_in_run_params(
+    tmp_path: Path, valid_frame: pd.DataFrame, csv_factory, contract_path: Path
+) -> None:
+    mlflow = pytest.importorskip("mlflow")
+    from mlops_team1.train_mlflow import run_experiment
+
+    previous = mlflow.get_tracking_uri()
+    mlflow.set_tracking_uri(f"sqlite:///{(tmp_path / 'mlflow.db').as_posix()}")
+    try:
+        experiment = "lr5-seed"
+        mlflow.create_experiment(experiment, artifact_location=(tmp_path / "artifacts").as_uri())
+
+        run_id = run_experiment(csv_factory(valid_frame), contract_path, experiment, 10, 3, 7)
+
+        params = mlflow.MlflowClient().get_run(run_id).data.params
+        assert params["random_state"] == "7", f"random_state в run: {params.get('random_state')}"
+    finally:
+        mlflow.set_tracking_uri(previous)
