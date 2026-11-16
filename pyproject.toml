@@ -1,3 +1,4 @@
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
@@ -13,12 +14,16 @@ dependencies = [
     "numpy>=1.26,<3",
     "pandas>=2.2,<3",
     "scikit-learn>=1.5,<2",
+    "fastapi>=0.115,<1",
+    "prometheus-client>=0.26,<1",
+    "uvicorn>=0.32,<1",
 ]
 
 [project.optional-dependencies]
 dev = [
     "ruff",
     "pytest",
+    "httpx>=0.28,<1",
 ]
 tracking = [
     "mlflow>=3.16,<4",
@@ -32,11 +37,11 @@ line-length = 100
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-     markers = [
-         "data: данные и контракт",
-         "evaluation: метрики, пороги и цель",
-         "model: артефакт модели (bundle) и обучение",
-         "api: интерфейс предсказания (временная замена HTTP API до ЛР6-ЛР7)",
-         "pipeline: связка компонентов и метаданные запуска",
-         "project: служебные проверки пакета и тестовой инфраструктуры",
-     ]
+markers = [
+    "data: данные и контракт",
+    "evaluation: метрики, пороги и цель",
+    "model: артефакт модели (bundle) и обучение",
+    "api: интерфейс предсказания (HTTP API и функции model_io)",
+    "pipeline: связка компонентов и метаданные запуска",
+    "project: служебные проверки пакета и тестовой инфраструктуры",
+]
