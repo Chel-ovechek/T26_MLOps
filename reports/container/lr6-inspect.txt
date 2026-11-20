@@ -1,0 +1,2 @@
+$ docker image inspect mlops-flight-delay:lr6-98c7a6f --format 'id={{.Id}} size={{.Size}} user={{.Config.User}} health={{json .Config.Healthcheck}}'
+id=sha256:9b1c2fff98a9c514b0788ba79bfae11f8e9cf8e9df7019c76fb271d0584901dc size=838389587 user=10001:10001 health={"Interval":10000000000,"Retries":3,"StartPeriod":10000000000,"Test":["CMD","python","-c","import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/readyz', timeout=2)"],"Timeout":3000000000}

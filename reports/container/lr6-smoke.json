@@ -1,0 +1,15 @@
+{
+  "base_url": "http://127.0.0.1:8080",
+  "ready": true,
+  "request": {
+    "dep_hour": 9,
+    "is_weekend": 0
+  },
+  "response": {
+    "delay_probability": 0.8291666666666666,
+    "delayed": true,
+    "threshold": 0.5,
+    "model_version": "0.2.0",
+    "request_id": "a84fbdde-bafe-483f-be49-a4d574421bb5"
+  }
+}
