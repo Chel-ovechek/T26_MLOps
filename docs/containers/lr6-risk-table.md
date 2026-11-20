@@ -3,7 +3,7 @@
 Для каждого риска указаны ограничение, которое его снижает, и проверка. Статические проверки читают текст `Dockerfile`, `compose.yaml` и `.dockerignore` (файл `tests/test_container_contract.py`, Docker не нужен). Динамические проверки выполняются командой Docker на собранном образе или запущенном контейнере.
 
 | № | Риск | Ограничение | Проверка |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | Процесс в контейнере работает от root, и уязвимость даёт полный доступ внутри контейнера | `USER 10001:10001` в стадии runtime | Статическая: `tests/test_container_contract.py::test_runtime_runs_as_non_root_with_explicit_ids`. Динамическая: `docker image inspect mlops-flight-delay:<тег> --format '{{.Config.User}}'` (ожидается `10001:10001`) |
 | 2 | Процесс пишет в файловую систему контейнера и меняет образ во время работы | `read_only: true`, запись только в `tmpfs` на `/tmp` | Статическая: `tests/test_container_contract.py::test_compose_runtime_restrictions`. Динамическая: `docker compose exec <сервис> python -c "open('/app/x', 'w')"` (ожидается ошибка «Read-only file system») |
 | 3 | Лишние привилегии Linux у процесса | `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]` | Статическая: `tests/test_container_contract.py::test_compose_runtime_restrictions`. Динамическая: `docker inspect <контейнер> --format '{{json .HostConfig.CapDrop}}'` (ожидается `["ALL"]`) |
@@ -26,3 +26,30 @@
 - пользователь `10001:10001` имеет доступ к нужным файлам.
 
 Эти свойства проверяют динамические команды из таблицы.
+
+## Воспроизведённые отказы
+
+Два отказа воспроизведены в Docker на образе, собранном из коммита `98c7a6f`; временные образы и контейнеры после опыта удалены, рабочие файлы возвращены `git restore`. Авторы указаны для каждого отказа.
+
+### Отказ 1: падающий тест останавливает сборку
+
+Воспроизвела Екатерина Головатенко (по её карточке ЛР6, PR #86).
+
+- Ожидаемый сигнал (названный заранее): падает `tests/test_quality.py::test_ping_returns_clean_nonempty_string`, образ `lr6-defect` не создаётся.
+- Дефект на временной копии: `assert result != ""` заменено на `assert result == ""`.
+- Команда: `docker build --progress=plain --tag mlops-flight-delay:lr6-defect .`
+- Факт: код завершения 1, `1 failed, 129 passed, 1 skipped`, `FAILED tests/test_quality.py::test_ping_returns_clean_nonempty_string`; `docker image inspect mlops-flight-delay:lr6-defect` не нашёл образ.
+- Что доказывает: quality-стадия блокирует runtime, непроверенный код не попадает в образ (риск «непроверенный код попал в image»).
+
+### Отказ 2: процесс слушает не тот порт
+
+Воспроизвёл Станислав Соловцов, 2026-11-20.
+
+- Дефект на копии: в `Dockerfile` в `CMD` порт `"8080"` заменён на `"8081"`; `EXPOSE 8080` и `HEALTHCHECK` не менялись. Образ `mlops-flight-delay:lr6-wrongport` собран за 22,5 с (все слои `CACHED`, кроме метаданных `CMD`).
+- Запуск: `docker run -d --name lr6-wrongport -p 8083:8080 --read-only --tmpfs /tmp mlops-flight-delay:lr6-wrongport`
+- Сигнал health: опрос `docker inspect --format '{{.State.Health.Status}}' lr6-wrongport` показал `starting`, затем `unhealthy`; в `docker inspect --format '{{json .State.Health}}'` `FailingStreak` 4, у каждой записи `ExitCode` 1 и `urllib.error.URLError: <urlopen error [Errno 111] Connection refused>`.
+- Первый полезный фрагмент лога (`docker logs lr6-wrongport`): `Uvicorn running on http://0.0.0.0:8081`.
+- Проверка гипотезы: `docker exec lr6-wrongport python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8081/readyz').read())"` вернула `b'{"status":"ready"}'`: приложение исправно, но слушает 8081.
+- Smoke с хоста: `python scripts/container_smoke.py --base-url http://127.0.0.1:8083 --timeout 10 --output reports/container/x.json` напечатал `SMOKE FAILED: Сервис не стал ready за 10.0 с: Remote end closed connection without response`, код возврата 1, файл отчёта не создан. На Docker Desktop с хоста приходит закрытое соединение (проброс порта), а не `Connection refused`, который виден внутри контейнера.
+- Причина: порт в `CMD` не согласован с `EXPOSE`, адресом healthcheck и пробросом `8083:8080`. Исправление: вернуть `"8080"` в `CMD` (`git restore Dockerfile`).
+- Что доказывает: healthcheck по `/readyz` и smoke test ловят «сервис жив, но недоступен» (отказ «процесс запущен на другом порту» из раздела 15 задания).
