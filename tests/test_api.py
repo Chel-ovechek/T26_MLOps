@@ -30,18 +30,19 @@ def test_readyz_503_without_model(tmp_path: Path) -> None:
     assert response.json()["error_code"] == "not_ready"
 
 
-def test_readyz_503_with_corrupt_model(tmp_path: Path) -> None:
+def test_startup_fails_with_corrupt_model(tmp_path: Path) -> None:
     corrupt = tmp_path / "corrupt.joblib"
     corrupt.write_bytes(b"not a model")
-    with TestClient(create_app(corrupt)) as client:
-        assert client.get("/healthz").status_code == 200
-        assert client.get("/readyz").status_code == 503
+    with pytest.raises(ValueError), TestClient(create_app(corrupt)):
+        pass
 
 
 def test_predict_contract(trained_model_path: Path) -> None:
     with TestClient(create_app(trained_model_path)) as client:
         response = client.post(
-            "/predict", json=VALID_PAYLOAD, headers={"X-Request-ID": "lr6-contract-test"}
+            "/predict",
+            json=VALID_PAYLOAD,
+            headers={"X-Request-ID": "lr6-contract-test"},
         )
     assert response.status_code == 200, response.text
     body = response.json()
@@ -85,10 +86,14 @@ def test_predict_generates_request_id(trained_model_path: Path) -> None:
         pytest.param({"dep_hour": 10, "is_weekend": 2}, id="weekend-2"),
         pytest.param({"dep_hour": 10}, id="missing-field"),
         pytest.param({"dep_hour": "10", "is_weekend": 0}, id="hour-as-string"),
-        pytest.param({"dep_hour": 10, "is_weekend": 0, "arr_delay": 42}, id="extra-field"),
+        pytest.param(
+            {"dep_hour": 10, "is_weekend": 0, "arr_delay": 42}, id="extra-field"
+        ),
     ],
 )
-def test_predict_rejects_invalid_payload(trained_model_path: Path, payload: dict) -> None:
+def test_predict_rejects_invalid_payload(
+    trained_model_path: Path, payload: dict
+) -> None:
     with TestClient(create_app(trained_model_path)) as client:
         response = client.post("/predict", json=payload)
     assert response.status_code == 422, response.text
