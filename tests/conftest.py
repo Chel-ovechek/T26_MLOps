@@ -1,4 +1,3 @@
-
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -23,6 +22,10 @@ LAYER_BY_FILE = {
     "test_model_bundle": "model",
     "test_model_io": "api",
     "test_api": "api",
+    "test_api_contract": "api",
+    "test_openapi_contract": "api",
+    "test_api_contract_smoke": "project",
+    "test_openapi_snapshot": "project",
     "test_container_contract": "project",
     "test_container_smoke": "project",
     "test_train_mlflow": "pipeline",

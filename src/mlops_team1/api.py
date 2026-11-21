@@ -1,10 +1,11 @@
-"""HTTP API предсказания задержки рейса: /healthz, /readyz, /predict, /metrics."""
+"""HTTP API предсказания задержки рейса (контракт 0.3.0): /healthz, /readyz, /predict, /metrics."""
 
 from __future__ import annotations
 
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -21,6 +22,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from mlops_team1.model_io import load_bundle
 
+API_VERSION = "0.3.0"
+# Допустимый X-Request-ID: безопасные для логов символы и разумная длина; иначе выдаётся UUID.
+REQUEST_ID_PATTERN = re.compile(r"[A-Za-z0-9._:-]{1,128}")
 LOGGER = logging.getLogger("mlops_team1.api")
 HTTP_REQUESTS = Counter(
     "http_requests_total",
@@ -49,11 +53,11 @@ class PredictionRequest(BaseModel):
 class PredictionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    delay_probability: float
+    delay_probability: float = Field(ge=0, le=1)
     delayed: bool
-    threshold: float
-    model_version: str
-    request_id: str
+    threshold: float = Field(ge=0, le=1)
+    model_version: str = Field(min_length=1)
+    request_id: str = Field(min_length=1)
 
 
 class StatusResponse(BaseModel):
@@ -101,19 +105,17 @@ def create_app(model_path: Path | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.model_bundle = None
+        # Нет файла: сервис стартует, /readyz и /predict отвечают 503.
+        # Файл есть, но повреждён: load_bundle бросает исключение и запуск завершается ошибкой.
         if resolved_path.exists():
-            try:
-                app.state.model_bundle = load_bundle(resolved_path)
-            except (ValueError, OSError) as exc:
-                # Сервис стартует, но /readyz отвечает 503, пока нет рабочей модели.
-                LOGGER.error("Модель не загружена: %s", exc)
+            app.state.model_bundle = load_bundle(resolved_path)
         bundle = app.state.model_bundle
         app.state.model_version = str(bundle["version"]) if bundle else "unavailable"
         yield
 
     api = FastAPI(
         title="Flight Delay Predictor",
-        version="1.0.0",
+        version=API_VERSION,
         description=(
             "Учебный API прогноза задержки рейса не менее чем на 15 минут "
             "по часу вылета и признаку выходного дня."
@@ -125,7 +127,7 @@ def create_app(model_path: Path | None = None) -> FastAPI:
     async def observability_middleware(request: Request, call_next):
         started = time.perf_counter()
         request_id = request.headers.get("X-Request-ID", "")
-        if not request_id or len(request_id) > 128:
+        if not REQUEST_ID_PATTERN.fullmatch(request_id):
             request_id = str(uuid.uuid4())
         request.state.request_id = request_id
         status = 500
@@ -138,7 +140,9 @@ def create_app(model_path: Path | None = None) -> FastAPI:
             elapsed = time.perf_counter() - started
             route_object = request.scope.get("route")
             route = getattr(route_object, "path", "unmatched")
-            HTTP_REQUESTS.labels(method=request.method, route=route, status=str(status)).inc()
+            HTTP_REQUESTS.labels(
+                method=request.method, route=route, status=str(status)
+            ).inc()
             HTTP_LATENCY.labels(method=request.method, route=route).observe(elapsed)
             LOGGER.info(
                 json.dumps(
@@ -178,7 +182,9 @@ def create_app(model_path: Path | None = None) -> FastAPI:
             status_code=exception.status_code,
             content=error_payload(
                 request,
-                error_code="not_ready" if exception.status_code == 503 else "http_error",
+                error_code=(
+                    "not_ready" if exception.status_code == 503 else "http_error"
+                ),
                 message=str(exception.detail),
             ),
             headers=exception.headers,
@@ -210,8 +216,12 @@ def create_app(model_path: Path | None = None) -> FastAPI:
         bundle = api.state.model_bundle
         if bundle is None:
             raise HTTPException(status_code=503, detail="Модель не загружена")
-        frame = pd.DataFrame([{"DepHour": payload.dep_hour, "IsWeekend": payload.is_weekend}])
-        probability = float(bundle["model"].predict_proba(frame[bundle["features"]])[0, 1])
+        frame = pd.DataFrame(
+            [{"DepHour": payload.dep_hour, "IsWeekend": payload.is_weekend}]
+        )
+        probability = float(
+            bundle["model"].predict_proba(frame[bundle["features"]])[0, 1]
+        )
         threshold = 0.5
         return PredictionResponse(
             delay_probability=probability,

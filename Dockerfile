@@ -20,6 +20,8 @@ RUN python -m pip install --no-cache-dir --no-deps -e . \
     && python -m pytest -q \
         --ignore=tests/test_container_contract.py \
         --ignore=tests/test_container_smoke.py \
+        --ignore=tests/test_api_contract_smoke.py \
+        --ignore=tests/test_openapi_snapshot.py \
     && python -m mlops_team1.validate_data \
         --data tests/fixtures/flights_sample_v1.csv \
         --contract data/contract.json \
