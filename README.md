@@ -174,11 +174,38 @@ python -m pytest -q --junitxml=reports/tests/lr5-pass.xml    # положите�
 - **Имя пакета и установка.** `mlops_team1` вместо `mlops_flight_delay`, зависимости ставятся как `.[dev,tracking]`, ветки называются `<тип>/issue-<номер>-<название>`.
 - **Данные для тестов.** Fixture `valid_frame` читает `tests/fixtures/flights_sample_v1.csv`, а не `data/flights_sample.csv`: рабочий CSV лежит под DVC и в CI его нет.
 - **Имена проверок валидатора.** Тесты используют имена проверок нашего валидатора (`ranges`, `types`, `allowed_values` и другие), а не имена из примера в задании (`DepHour.maximum` и т. п.).
-- **Слой API.** HTTP API в проекте пока нет (он появится в ЛР6–ЛР7). Слой `api` закрыт тестами интерфейса предсказания `model_io` (функции и командная строка), а строка таблицы рисков про API помечена как замена.
+- **Слой API.** На момент ЛР5 HTTP API в проекте не было; слой `api` был закрыт тестами интерфейса предсказания `model_io` (функции и командная строка), а строка таблицы рисков про API помечена как замена. HTTP API добавлен в ЛР6, слой `api` теперь включает и `tests/test_api.py`.
 - **Слои тестов.** Слой задаётся маркером по имени файла в `tests/conftest.py`; файлы не разложены по папкам, чтобы не ломать пути к эталонным данным и не раздувать diff.
 - **Роли.** В команде четыре человека, поэтому роли Integration engineer и Quality reviewer совмещены.
 - **Defect injection.** Каждый участник внёс свой дефект из списка задания (порог цели, порядок признаков, поле версии bundle, граница `DepHour`). Дефект «удалить проверку одного класса» не использовался: его и так ловит `tests/test_evaluate.py`.
 - **Исправление по итогам тестов.** Анализ риска «модельный файл повреждён» показал, что `load_bundle` на мусорном или пустом файле падал сырым `KeyError` или `EOFError`, а командная строка печатала трассировку. Теперь это контролируемый `ValueError`, у командной строки код 2.
+
+## Контейнеры (ЛР6)
+
+Образ API предсказания собирается из `Dockerfile` в две стадии: `quality` (Ruff, pytest, проверка данных, обучение модели) и `runtime` (только зависимости, приложение и модель). Запуск и ограничения runtime (non-root пользователь 10001:10001, `read_only`, `tmpfs` на `/tmp`, `cap_drop: ALL`, `no-new-privileges`) описаны в `compose.yaml`. Сервис отвечает на `/healthz`, `/readyz`, `/predict` и `/metrics`, порт контейнера 8080, порт хоста задаётся переменной `APP_PORT`.
+
+```powershell
+$sha = git rev-parse --short HEAD
+$env:IMAGE_TAG = "lr6-$sha"
+docker compose up --build --detach
+docker compose ps    # ожидается healthy
+python scripts/container_smoke.py --base-url http://127.0.0.1:8080 --output reports/container/lr6-smoke.json
+docker compose down
+```
+
+Отчёты лежат в `reports/container/`: `lr6-inspect.txt` (команда `docker image inspect`, image ID, размер, пользователь, healthcheck) и `lr6-smoke.json` (ответ `/predict`). Образ `mlops-flight-delay:lr6-<short-sha>` собирается из коммита, чей короткий SHA указан в теге; коммит с отчётами и тег `lr6-v1` стоят следом и отличаются от него только файлами в `reports/container/`, README и таблицей рисков. Таблица «риск — ограничение — проверка» и описание воспроизведённых отказов: [docs/containers/lr6-risk-table.md](docs/containers/lr6-risk-table.md). Статические проверки Dockerfile, Compose и `.dockerignore` лежат в `tests/test_container_contract.py`.
+
+## Отклонения от задания (ЛР6)
+
+- **Имя пакета и образа.** Модуль `mlops_team1` вместо `mlops_flight_delay`; образ назван `mlops-flight-delay:lr6-<short-sha>`, как в задании.
+- **Данные для обучения в build.** Рабочий `data/flights_sample.csv` лежит под DVC и в Docker context не попадает, поэтому внутри сборки модель обучается и проверяется на `tests/fixtures/flights_sample_v1.csv`. Модель в образе поэтому не равна модели ЛР4 (она обучена на v2).
+- **Метаданные DVC в quality.** В quality-стадию копируется `data/flights_sample.csv.dvc`: тест `tests/test_run_meta.py` читает из него хеш. Сами данные в образ не попадают.
+- **Gate в Dockerfile.** Используется `ruff check src tests`, а не `ruff check .`. Из `pytest` внутри сборки исключены `tests/test_container_contract.py` и `tests/test_container_smoke.py`: они читают `Dockerfile`, `compose.yaml` и `scripts/`, которых нет в quality-стадии. Полный набор запускается локально и в CI.
+- **Prometheus и Grafana.** В `compose.yaml` только сервис приложения; сервисы мониторинга из стартового проекта относятся к ЛР10 и не нужны. Эндпоинт `/metrics` в API есть.
+- **Docker в CI.** Образ в CI не собирается; сборка и запуск проверяются вручную, результаты в `reports/container/`.
+- **Зависимости.** Версии зависимостей ограничены диапазонами в `pyproject.toml`, lock-файла нет: тег с SHA связывает образ с кодом, но не гарантирует побайтовое повторение будущей сборки.
+- **Размер образа.** `docker image inspect` показывает 838 389 587 байт; основной вес (около 380 МБ в `docker history`) даёт установка зависимостей (numpy, scipy, pandas, scikit-learn). Слой `COPY /wheels` (78 МБ) остаётся в истории образа, хотя файлов в итоговой файловой системе нет (`rm -rf /wheels` создаёт новый слой). Убрать его можно через `RUN --mount=type=bind,from=quality,source=/wheels,target=/wheels`; это не сделано, чтобы не менять проверенный образ.
+- **Коэффициенты участников.** Коэффициенты за ЛР6 записаны в итоговом комментарии общего issue #77.
 
 ## Структура
 
@@ -186,5 +213,7 @@ python -m pytest -q --junitxml=reports/tests/lr5-pass.xml    # положите�
 - `tests/` — тесты
 - `.github/workflows/ci.yml` — автоматические проверки (CI)
 - `data/` — контракт и `.dvc`-метаданные набора; сами CSV в Git не добавляются, их версионирует DVC (см. `.gitignore`)
-- `reports/` — отчёты проверок (создаются командой, в Git не хранятся, кроме `reports/experiments/` и `reports/tests/`)
-- `docs/` — документация, в том числе `docs/reproducibility/` с протоколом и отчётами версий данных и `docs/testing/` с таблицей рисков тестов (ЛР5)
+- `reports/` — отчёты проверок (создаются командой, в Git не хранятся, кроме `reports/experiments/`, `reports/tests/` и `reports/container/`)
+- `Dockerfile`, `compose.yaml`, `.dockerignore` — образ и запуск контейнера (ЛР6)
+- `scripts/container_smoke.py` — smoke test контейнера (ЛР6)
+- `docs/` — документация, в том числе `docs/reproducibility/` с протоколом и отчётами версий данных, `docs/testing/` с таблицей рисков тестов (ЛР5) и `docs/containers/` с таблицей рисков контейнера (ЛР6)
